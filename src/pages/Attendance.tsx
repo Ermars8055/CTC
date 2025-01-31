@@ -1,15 +1,31 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Users, Check, X } from 'lucide-react';
 
 export default function Attendance() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-  
-  const students = [
-    { id: 1, name: 'Alex Johnson', status: 'present', club: 'Build Club' },
-    { id: 2, name: 'Sarah Chen', status: 'absent', club: 'Robotics Club' },
-    { id: 3, name: 'Mike Peters', status: 'present', club: 'Gen AI Club' },
-    { id: 4, name: 'Emma Wilson', status: 'present', club: 'Build Club' },
-  ];
+  const [students, setStudents] = useState([]);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/attendance')
+      .then(response => response.json())
+      .then(data => setStudents(data))
+      .catch(error => console.error('Error fetching attendance:', error));
+  }, []);
+
+  const updateAttendance = (id, status) => {
+    setStudents(students.map(student => 
+      student.id === id ? { ...student, status } : student
+    ));
+
+    fetch(`http://localhost:5000/api/attendance/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status })
+    })
+    .then(response => response.json())
+    .then(() => console.log('Attendance updated'))
+    .catch(error => console.error('Error updating attendance:', error));
+  };
 
   return (
     <div className="space-y-6">
@@ -54,10 +70,10 @@ export default function Attendance() {
                   </td>
                   <td className="py-3 px-4">
                     <div className="flex space-x-2">
-                      <button className="p-1 hover:bg-green-100 rounded">
+                      <button className="p-1 hover:bg-green-100 rounded" onClick={() => updateAttendance(student.id, 'present')}>
                         <Check className="h-5 w-5 text-green-600" />
                       </button>
-                      <button className="p-1 hover:bg-red-100 rounded">
+                      <button className="p-1 hover:bg-red-100 rounded" onClick={() => updateAttendance(student.id, 'absent')}>
                         <X className="h-5 w-5 text-red-600" />
                       </button>
                     </div>
