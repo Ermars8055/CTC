@@ -1,57 +1,64 @@
 const express = require('express');
-const cors = require('cors');
-const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
+const cors = require('cors');
+
 const app = express();
-const port = 5000;
+app.use(express.json());
+app.use(cors());
 
-// Middleware
-app.use(cors()); // To allow cross-origin requests from the frontend
-app.use(bodyParser.json()); // For parsing application/json
-
-// MongoDB Connection
-mongoose.connect('mongodb://localhost:27017/attendance', { useNewUrlParser: true, useUnifiedTopology: true })
-  .then(() => console.log('Connected to MongoDB'))
-  .catch(err => console.error('Failed to connect to MongoDB', err));
+mongoose.connect('mongodb://localhost:27017/attendanceDB', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+});
 
 // Student Schema
 const studentSchema = new mongoose.Schema({
+  id: Number,
   name: String,
-  club: String,
-  status: { type: String, enum: ['present', 'absent'] }
+  club: String
 });
-
 const Student = mongoose.model('Student', studentSchema);
 
-// Routes
+// Attendance Schema
+const attendanceSchema = new mongoose.Schema({
+  date: String,
+  records: [
+    {
+      id: Number,
+      name: String,
+      club: String,
+      status: String
+    }
+  ]
+});
+const Attendance = mongoose.model('Attendance', attendanceSchema);
 
-// Get all students (attendance data)
-app.get('/api/attendance', async (req, res) => {
+// Fetch students
+app.get('/api/students', async (req, res) => {
   try {
     const students = await Student.find();
     res.json(students);
   } catch (err) {
-    res.status(500).json({ message: 'Error fetching students' });
+    res.status(500).json({ error: 'Error fetching students' });
   }
 });
 
-// Update student attendance
-app.put('/api/attendance/:id', async (req, res) => {
-  const { id } = req.params;
-  const { status } = req.body;
-
+// Save attendance
+app.post('/api/attendance', async (req, res) => {
   try {
-    const student = await Student.findByIdAndUpdate(id, { status }, { new: true });
-    if (!student) {
-      return res.status(404).json({ message: 'Student not found' });
-    }
-    res.json({ message: 'Attendance updated', student });
+    const { date, records } = req.body;
+
+    const attendance = new Attendance({
+      date,
+      records
+    });
+
+    await attendance.save();
+    res.json({ message: 'Attendance saved successfully' });
   } catch (err) {
-    res.status(500).json({ message: 'Error updating attendance' });
+    res.status(500).json({ error: 'Error saving attendance' });
   }
 });
 
-// Start the server
-app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
-});
+const PORT = 5000;
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
