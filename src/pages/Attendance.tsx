@@ -4,27 +4,44 @@ import { Users, Check, X } from 'lucide-react';
 export default function Attendance() {
   const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
   const [students, setStudents] = useState([]);
+  const [showPopup, setShowPopup] = useState(false);
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/attendance')
-      .then(response => response.json())
-      .then(data => setStudents(data))
-      .catch(error => console.error('Error fetching attendance:', error));
+    fetch('http://localhost:5000/api/students')
+      .then((res) => res.json())
+      .then((data) => setStudents(data))
+      .catch((err) => console.error('Error fetching students:', err));
   }, []);
 
   const updateAttendance = (id, status) => {
     setStudents(students.map(student => 
       student.id === id ? { ...student, status } : student
     ));
+  };
 
-    fetch(`http://localhost:5000/api/attendance/${id}`, {
-      method: 'PUT',
+  const markAttendance = () => {
+    const attendanceData = {
+      date,
+      records: students.map(({ id, name, club, status }) => ({ id, name, club, status }))
+    };
+
+    fetch('http://localhost:5000/api/attendance', {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status })
+      body: JSON.stringify(attendanceData)
     })
-    .then(response => response.json())
-    .then(() => console.log('Attendance updated'))
-    .catch(error => console.error('Error updating attendance:', error));
+    .then((res) => res.json())
+    .then((data) => {
+      console.log('Attendance saved:', data);
+      alert(`Attendance marked for ${date}!`);
+      resetAttendance();
+    })
+    .catch((err) => console.error('Error saving attendance:', err));
+  };
+
+  const resetAttendance = () => {
+    setStudents(students.map(student => ({ ...student, status: 'absent' })));
+    setShowPopup(false);
   };
 
   return (
@@ -38,7 +55,7 @@ export default function Attendance() {
             onChange={(e) => setDate(e.target.value)}
             className="input max-w-xs"
           />
-          <button className="btn-primary">
+          <button className="btn-primary" onClick={markAttendance}>
             <Users className="h-4 w-4 mr-2 inline" />
             Mark Attendance
           </button>
@@ -65,7 +82,7 @@ export default function Attendance() {
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       student.status === 'present' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
                     }`}>
-                      {student.status}
+                      {student.status || 'absent'}
                     </span>
                   </td>
                   <td className="py-3 px-4">
